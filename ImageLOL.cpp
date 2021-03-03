@@ -182,7 +182,8 @@ int main(int argc, char** argv) {
 							write_bits(output_img, current_pos, current_bit, temp_byte, bit_n, bit_mask);
 						}
 						//always writes the image into a png.
-						stbi_write_png(output_image.c_str(), (int)o_width, (int)o_height, STBI_rgb, output_img, (int)o_width*STBI_rgb);								
+						stbi_write_png(output_image.c_str(), (int)o_width, (int)o_height, STBI_rgb, output_img, (int)o_width*STBI_rgb);
+						delete [] output_img;
 					}else {
 						std::cout << "file is too big, sorry :c" << std::endl;
 					}
@@ -241,6 +242,7 @@ int main(int argc, char** argv) {
 						}
 						//write the file.
 						file.write(reinterpret_cast<const char*>(out_file), file_size);
+						delete [] out_file;
 						file.close();
 					}else{
 						std::cout << "couldn't open output file" << std::endl;
