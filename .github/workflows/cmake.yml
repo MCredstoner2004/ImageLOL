@@ -23,9 +23,16 @@ jobs:
      
      - name: CMake Build
        run: cmake --build build --config Release
-     
-     - name: Upload Build Artifact
+       
+     - if: matrix.os == 'ubuntu-latest'
+       name: Upload Linux Build Artifact
        uses: actions/upload-artifact@v2
        with:
          name: ImageLOL-${{matrix.os}}
-         path: build/ImageLOL*
+         path: build/ImageLOL
+     - if: matrix.os == 'windows-latest'
+       name: Upload Windows Build Artifact
+       uses: actions/upload-artifact@v2
+       with:
+         name: ImageLOL-${{matrix.os}}
+         path: build/Release/ImageLOL.exe
