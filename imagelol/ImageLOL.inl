@@ -31,9 +31,19 @@ namespace ImageLOL
 		static_assert(std::is_trivially_copyable_v<T>, "type is not trivially copyable");
 		T output_object;
 		byte* output_bytes = reinterpret_cast<byte *>(std::addressof(output_object));
-		for(size_t read_bytes = 0; read_bytes < sizeof(T) ; read_bytes ++)
+		if (std::is_integral_v<T>)
 		{
-			output_bytes[read_bytes] = read<byte>();
+			for(size_t read_bytes = 0; read_bytes < sizeof(T) ; read_bytes ++)
+			{
+				output_bytes[sizeof(T) - read_bytes -1] = read<byte>();
+			}
+		}
+		else
+		{
+			for(size_t read_bytes = 0; read_bytes < sizeof(T) ; read_bytes ++)
+			{
+				output_bytes[read_bytes] = read<byte>();
+			}
 		}
 		return output_object;
 	}
