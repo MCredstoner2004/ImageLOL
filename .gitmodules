@@ -1,3 +1,9 @@
 [submodule "External/stb"]
 	path = External/stb
 	url = https://github.com/nothings/stb/
+[submodule "External/zlib"]
+	path = External/zlib
+	url = https://github.com/madler/zlib
+[submodule "External/libpng"]
+	path = External/libpng
+	url = https://github.com/glennrp/libpng

@@ -1,11 +1,28 @@
 cmake_minimum_required(VERSION 3.10)
 
 project(ImageLOL VERSION 0.0)
-
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
-
+include_directories("External/zlib" "External/libpng")
 add_subdirectory("External/stb_image-cmake")
 
-add_executable(ImageLOL ImageLOL.cpp)
-target_link_libraries(ImageLOL PRIVATE stb_image)
+set(SKIP_INSTALL_ALL ON CACHE BOOL "")
+add_subdirectory("External/zlib-no-examples")
+
+set(PNG_BUILD_ZLIB ON CACHE BOOL "")
+link_libraries(zlibstatic)
+get_target_property(ZLIB_INCLUDE_DIRECTORIES zlibstatic INCLUDE_DIRECTORIES)
+include_directories(${ZLIB_INCLUDE_DIRECTORIES})
+set(ZLIB_INCLUDE_DIR ${ZLIB_INCLUDE_DIRECTORIES} CACHE PATH "")
+set(PNG_SHARED OFF CACHE BOOL "")
+set(PNG_EXECUTABLES OFF CACHE BOOL "")
+add_subdirectory("External/libpng")
+add_dependencies(png_static zlibstatic zlib)
+add_dependencies(genfiles zlibstatic)
+unset(SKIP_INSTALL_ALL CACHE)
+get_target_property(LIBPNG_INCLUDE_DIRECTORIES png_static INCLUDE_DIRECTORIES)
+
+add_subdirectory("imagelol")
+add_executable(ImageLOL main.cpp)
+target_include_directories(ImageLOL PRIVATE ${LIBPNG_INCLUDE_DIRECTORIES})
+target_link_libraries(ImageLOL PRIVATE stb_image png_static zlibstatic libimagelol)
