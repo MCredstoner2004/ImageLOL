@@ -89,8 +89,8 @@ int main(int argc, char** argv)
 		embed = true;
 		break;
 	default:
-		std::cout << "usage: ImageLOL <input-image> <input-file> [-b<bitdepth>] (embeds a file)\n";
-		std::cout << "       ImageLOL <input-image> (extracts a file)" << std::endl;
+		std::cout << "usage: imagelol <input-image> <input-file> [-b<bitdepth>] (embeds a file)\n";
+		std::cout << "       imagelol <input-image> (extracts a file)" << std::endl;
 	}
 	if (extract||embed)
 	{
