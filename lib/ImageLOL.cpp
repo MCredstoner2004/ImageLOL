@@ -1,10 +1,14 @@
 #include <cmath>
+//#include <chrono>
+#include <iostream>
 #include <climits>
-#include <algorithm>
+//#include <algorithm>
 #include "ImageLOL.h"
 
 namespace ImageLOL
 {
+
+const byte masks[] {0b0, 0b1, 0b11, 0b111, 0b1111, 0b11111, 0b111111, 0b1111111, 0b11111111};
 
 	dimensions::dimensions(u64 _width, u64 _height): width(_width), height(_height)
 	{
@@ -206,65 +210,99 @@ namespace ImageLOL
 
 	ImageLOLWriter::~ImageLOLWriter() = default;
 
-	u64 ImageLOLWriter::write(const byte object)
+	u64 writeSingleByte(byte* image_data, u64& pos, byte& bit, byte bit_depth, bool alpha, u64 max_pos, byte data)
 	{
-		byte written_bits = 0;
+		bool fast_path = false;
+		u64 position = pos;
+		byte current_bit = bit;
 		byte remaining_bits = CHAR_BIT;
-		while ((remaining_bits > 0) && (position < total_bytes))
+		byte current_byte;
+		byte mask;
+		if (CHAR_BIT == 8)
 		{
-			byte bits_to_write = std::min<byte>(remaining_bits, bit_depth - bit);
-			byte mask = UCHAR_MAX >> (CHAR_BIT - bits_to_write);
-
-			byte current_data = image.image_data[position];
-			current_data &= ~(mask << (bit_depth - bit - bits_to_write));
-			current_data |= (((object >> (remaining_bits - bits_to_write)) & mask) << (bit_depth - bit - bits_to_write));
-			image.image_data[position] = current_data;
-
-			bit += bits_to_write;
-			remaining_bits -= bits_to_write;
-			written_bits += bits_to_write;
-			if (bit >= bit_depth)
+			switch (bit_depth)
 			{
+			case 1:
+			case 2:
+			case 4:
+			case 8:
+				fast_path = true;
+			}
+		}
+		if (fast_path)
+		{
+			mask = masks[bit_depth];
+			while (remaining_bits && (position < max_pos))
+			{
+				current_byte = image_data[position] & ~mask;
+				image_data[position] = current_byte | ((data >> (remaining_bits - bit_depth)) & mask);
+				remaining_bits -= bit_depth;
 				position ++;
-				if (image.has_alpha && ((position % 4) == 3))
+				if (alpha && ((position % 4) == 3))
 				{
 					position ++;
 				}
-				bit = 0;
 			}
 		}
-		return written_bits / CHAR_BIT;
+		else
+		{
+			byte bits_to_write;
+			while ((remaining_bits) && (position < max_pos))
+			{
+				if (remaining_bits > bit_depth - current_bit)
+				{
+					bits_to_write = bit_depth - current_bit;
+				}
+				else
+				{
+					bits_to_write = remaining_bits;
+				}
+				mask = masks[bits_to_write];
+				current_byte = image_data[position];
+				current_byte &= ~mask << (bit_depth - current_bit - bits_to_write);
+				current_byte |= ((data >>  (remaining_bits - bits_to_write)) & mask) << (bit_depth - current_bit - bits_to_write);
+				image_data[position] = current_byte;
+				current_bit += bits_to_write;
+				remaining_bits -= bits_to_write;
+				if (current_bit >= bit_depth)
+				{
+					position ++;
+					if (alpha && ((position % 4) == 3))
+					{
+						position ++;
+					}
+					current_bit = 0;
+				}
+			}
+		}
+		pos = position;
+		bit = current_bit;
+		return (CHAR_BIT - remaining_bits) / CHAR_BIT;
 	}
 
-	u64 ImageLOLWriter::write(const u64 object)
+	u64 ImageLOLWriter::write(const byte data)
 	{
-		byte written_bits = 0;
-		byte remaining_bits = CHAR_BIT * sizeof(u64);
-		while ((remaining_bits > 0) && (position < total_bytes))
-		{
-			byte bits_to_write = std::min<byte>(remaining_bits, bit_depth - bit);
-			byte mask = UCHAR_MAX >> (CHAR_BIT - bits_to_write);
-
-			byte current_data = image.image_data[position];
-			current_data &= ~(mask << (bit_depth - bit - bits_to_write));
-			current_data |= (((object >> (remaining_bits - bits_to_write)) & mask) << (bit_depth - bit - bits_to_write));
-			image.image_data[position] = current_data;
-
-			bit += bits_to_write;
-			remaining_bits -= bits_to_write;
-			written_bits += bits_to_write;
-			if (bit >= bit_depth)
-			{
-				position ++;
-				if (image.has_alpha && ((position % 4) == 3))
-				{
-					position ++;
-				}
-				bit = 0;
-			}
-		}
-		return written_bits / (CHAR_BIT * sizeof(u64));
+		return writeSingleByte(image.image_data, position, bit, bit_depth, image.has_alpha, total_bytes, data);
 	}
+
+	u64 ImageLOLWriter::writeByteBuffer(const byte* buffer, u64 size)
+	{
+		byte* image_data = image.image_data;
+		u64 pos = position;
+		byte current_bit = bit;
+		byte depth = bit_depth;
+		bool alpha = image.has_alpha;
+		u64 max_pos = total_bytes;
+		u64 count = 0;
+		for (u64 i = 0; i < size; i++ )
+		{
+			count += writeSingleByte(image_data, pos, current_bit, depth, alpha, max_pos, buffer[i]);
+		}
+		position = pos;
+		bit = current_bit;
+		return count;
+	}
+
 
 	template<> u64 ImageLOLWriter::write<std::string>(const std::string& object)
 	{
@@ -280,11 +318,8 @@ namespace ImageLOL
 	template<> u64 ImageLOLWriter::write<std::vector<byte>>(const std::vector<byte>& object)
 	{
 		u64 written_bytes = 0;
-		written_bytes += write(static_cast<u64>(object.size())) * sizeof(u64);
-		for(byte b : object)
-		{
-			written_bytes += write(b);
-		}
+		written_bytes += write(static_cast<u64>(object.size()));
+		written_bytes += writeByteBuffer(object.data(), static_cast<u64>(object.size()));
 		return written_bytes / (object.size() + sizeof(u64));
 	}
 
@@ -294,61 +329,102 @@ namespace ImageLOL
 
 	ImageLOLReader::~ImageLOLReader() = default;
 
+	byte readSingleByte(byte* image_data, u64& pos, byte& bit, byte bit_depth, bool alpha, u64 max_pos, u64* count = nullptr)
+	{
+		bool fast_path = false;
+		byte output = 0;
+		u64 position = pos;
+		byte current_bit = bit;
+		byte remaining_bits = CHAR_BIT;
+		byte mask;
+		if (CHAR_BIT == 8)
+		{
+			switch (bit_depth)
+			{
+			case 1:
+			case 2:
+			case 4:
+			case 8:
+				fast_path = true;
+			}
+		}
+		if (fast_path)
+		{
+			mask = masks[bit_depth];
+			while (remaining_bits && (position < max_pos))
+			{
+				output |= (image_data[position] & mask) << (remaining_bits - bit_depth);
+				remaining_bits -= bit_depth;
+				position ++;
+				if (alpha && ((position % 4) == 3))
+				{
+					position ++;
+				}
+			}
+		}
+		else
+		{
+			byte bits_to_read;
+			byte current_byte;
+			while ((remaining_bits) && (position < max_pos))
+			{
+				if (remaining_bits > bit_depth - current_bit)
+				{
+					bits_to_read = bit_depth - current_bit;
+				}
+				else
+				{
+					bits_to_read = remaining_bits;
+				}
+				current_byte = image_data[position];
+				mask = masks[bits_to_read];
+				current_byte = (image_data[position] >> (bit_depth - current_bit - bits_to_read)) & mask;
+				output |= current_byte << (remaining_bits - bits_to_read);
+				current_bit += bits_to_read;
+				remaining_bits -= bits_to_read;
+				if (current_bit >= bit_depth)
+				{
+					position ++;
+					if (alpha && ((position % 4) == 3))
+					{
+						position ++;
+					}
+					current_bit = 0;
+				}
+			}
+		}
+		if (count)
+		{
+			*count += (CHAR_BIT - remaining_bits) / CHAR_BIT;
+		}
+		pos = position;
+		bit = current_bit;
+		return output;
+	}
+
+	u64 ImageLOLReader::readByteBuffer(byte* output_buffer, u64 size)
+	{
+		byte* image_data = image.image_data;
+		u64 pos = position;
+		byte current_bit = bit;
+		byte depth = bit_depth;
+		bool alpha = image.has_alpha;
+		u64 max_pos = total_bytes;
+		u64 count = 0;
+		for (u64 i = 0; i < size; i++ )
+		{
+			output_buffer[i] = readSingleByte(image_data, pos, current_bit, depth, alpha, max_pos, &count);
+		}
+		position = pos;
+		bit = current_bit;
+		return count;
+	}
+
 	template<> byte ImageLOLReader::read<byte>()
 	{
-		byte remaining_bits = CHAR_BIT;
-		byte output = 0;
-		while ((remaining_bits > 0) && (position < total_bytes))
-		{
-			byte bits_to_read = std::min<byte>(remaining_bits, bit_depth - bit);
-			byte mask = UCHAR_MAX >> (CHAR_BIT - bits_to_read);
-			byte current_bits = image.image_data[position];
-			current_bits >>= (bit_depth - bit - bits_to_read);
-			current_bits &= mask;
-			output |= (static_cast<byte>(current_bits) << (remaining_bits - bits_to_read));
-
-			bit += bits_to_read;
-			remaining_bits -= bits_to_read;
-			if (bit >= bit_depth)
-			{
-				position ++;
-				if (image.has_alpha && ((position % 4) == 3))
-				{
-					position ++;
-				}
-				bit = 0;
-			}
-		}
-		return output;
+		return readSingleByte(image.image_data, position, bit, bit_depth, image.has_alpha, total_bytes);
 	}
 
-	template<> u64 ImageLOLReader::read<u64>()
-	{
-		byte remaining_bits = CHAR_BIT * sizeof(u64);
-		u64 output = 0;
-		while ((remaining_bits > 0) && (position < total_bytes))
-		{
-			byte bits_to_read = std::min<byte>(remaining_bits, bit_depth - bit);
-			byte mask = UCHAR_MAX >> (CHAR_BIT - bits_to_read);
-			byte current_bits = image.image_data[position];
-			current_bits >>= (bit_depth - bit - bits_to_read);
-			current_bits &= mask;
-			output |= (static_cast<u64>(current_bits) << (remaining_bits - bits_to_read));
-
-			bit += bits_to_read;
-			remaining_bits -= bits_to_read;
-			if (bit >= bit_depth)
-			{
-				position ++;
-				if (image.has_alpha && ((position % 4) == 3))
-				{
-					position ++;
-				}
-				bit = 0;
-			}
-		}
-		return output;
-	}
 
 	template<> std::string ImageLOLReader::read<std::string>()
 	{
@@ -366,13 +442,9 @@ namespace ImageLOL
 		u64 size = read<u64>();
 		std::vector<byte> output;
 		output.resize(static_cast<size_t>(size));
-		for(size_t read_bytes = 0; read_bytes < size; read_bytes ++)
-		{
-			output[read_bytes] = read<byte>();
-		}
+		readByteBuffer(output.data(), size);
 		return output;
 	}
-
 
 }
 

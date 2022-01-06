@@ -23,7 +23,7 @@ namespace ImageLOL
 		{
 			written_bytes += write(b);
 		}
-		return written_bytes / sizeof(T);
+		return written_bytes;
 	}
 
 	template<typename T> T ImageLOLReader::read()

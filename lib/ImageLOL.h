@@ -1,5 +1,6 @@
 #ifndef IMAGELOL_H
 #define IMAGELOL_H
+#include <cstddef>
 #include <cstdint>
 #include <utility>
 #include <string>
@@ -54,7 +55,7 @@ namespace ImageLOL
 		u64 position;
 		byte bit;
 		ImageLOL(Image image, byte bit_depth = 0);
-		virtual ~ImageLOL();
+		~ImageLOL();
 	public:
 		u64 get_total_bytes();
 		byte get_bit_depth();
@@ -62,13 +63,13 @@ namespace ImageLOL
 	friend class ImageLOLReader;
 	};
 
-	class ImageLOLWriter: virtual public ImageLOL
+	class ImageLOLWriter: public ImageLOL
 	{
 		ImageLOLWriter(Image image, byte bit_depth);
 	public:
-		virtual ~ImageLOLWriter();
+		~ImageLOLWriter();
 		u64 write(const byte object);
-		u64 write(const u64 object);
+		u64 writeByteBuffer(const byte* buffer, u64 size);
 		template<typename T> u64 write(const T& object);
 	friend class Image;
 	friend class ImageLOL;
@@ -77,18 +78,18 @@ namespace ImageLOL
 	template<> u64 ImageLOLWriter::write<std::string>(const std::string& object);
 	template<> u64 ImageLOLWriter::write<std::vector<byte>>(const std::vector<byte>& object);
 
-	class ImageLOLReader: virtual public ImageLOL
+	class ImageLOLReader: public ImageLOL
 	{
 		ImageLOLReader(Image image, byte bit_depth = 0);
 	public:
-		virtual ~ImageLOLReader();
+		~ImageLOLReader();
 		template<typename T> T read();
+		u64 readByteBuffer(byte* buffer, u64 size);
 	friend class Image;
 	friend class ImageLOL;
 	};
 
 	template<> byte ImageLOLReader::read<byte>();
-	template<> u64 ImageLOLReader::read<u64>();
 	template<> std::string ImageLOLReader::read<std::string>();
 	template<> std::vector<byte> ImageLOLReader::read<std::vector<byte>>();
 }
