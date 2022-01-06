@@ -279,7 +279,7 @@ int main(int argc, char** argv)
 						p_img.height = static_cast<int32_t>(o_height);
 						p_img.format = ((num_channels < 4) ? PNG_FORMAT_RGB : PNG_FORMAT_RGBA);
 						p_img.flags = 0;
-						if (png_image_write_to_file(&p_img, output_filename.c_str(), 0, output_img.data(), 0, nullptr))
+						if (png_image_write_to_file(&p_img, output_filename.string().c_str(), 0, output_img.data(), 0, nullptr))
 						{
 							std::clog << "Successfully embedded file" <<std::endl;
 							std::cout << output_filename.string() << std::endl;
