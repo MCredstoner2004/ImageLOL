@@ -1,8 +1,6 @@
 #include <cmath>
-//#include <chrono>
 #include <iostream>
 #include <climits>
-//#include <algorithm>
 #include "ImageLOL.h"
 
 namespace ImageLOL

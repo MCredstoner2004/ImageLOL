@@ -1,6 +1,7 @@
 #include <array>
 #include <memory>
 #include <type_traits>
+#include <algorithm>
 namespace ImageLOL
 {
 
