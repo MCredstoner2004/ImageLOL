@@ -11,7 +11,7 @@ jobs:
     
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest]
     
     steps:
      - uses: actions/checkout@v2
@@ -36,9 +36,3 @@ jobs:
        with:
          name: ImageLOL-${{matrix.os}}
          path: build/Release/imagelol.exe
-     - if: matrix.os == 'macos-latest'
-       name: Upload MacOS Build Artifact
-       uses: actions/upload-artifact@v2
-       with:
-         name: ImageLOL-${{matrix.os}}
-         path: build/imagelol
