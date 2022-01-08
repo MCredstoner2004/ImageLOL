@@ -268,7 +268,7 @@ int main(int argc, char** argv)
 						}
 						ImageLOL::Image o_img(output_img.data(), o_width, o_height, num_channels);
 						ImageLOL::ImageLOLWriter writer(o_img.getWriter(bit_depth));
-						writer.write(input_file.string());
+						writer.write(input_filename);
 						writer.write(file_bytes);
 						//always writes the image to a png.
 						png_image p_img;
